@@ -941,3 +941,40 @@ button {
   font-size: 0.9rem;
   color: rgba(255,255,255,0.78);
 }
+
+
+.hero__info {
+  align-content: start;
+}
+
+.info-card {
+  min-height: unset;
+}
+
+@media (max-width: 720px) {
+  .hero__logo {
+    height: 168px;
+    object-fit: cover;
+    padding: 10px;
+  }
+
+  .info-card {
+    padding: 12px 14px;
+    border-radius: 18px;
+  }
+
+  .info-card__label {
+    margin-bottom: 4px;
+  }
+}
+
+@media (max-width: 520px) {
+  .hero__logo {
+    height: 156px;
+  }
+
+  .info-card {
+    padding: 10px 12px;
+    border-radius: 16px;
+  }
+}
