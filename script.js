@@ -5,8 +5,8 @@ const BUSINESS_HOURS = { start: "08:30", end: "19:30" };
 
 const DATA = {
   categories: [
-    { id: "garrafa", label: "Açaí na Garrafa" },
     { id: "acai", label: "Açaí" },
+    { id: "garrafa", label: "Açaí na Garrafa" },
     { id: "pastel", label: "Pastel" }
   ],
   products: [
@@ -175,7 +175,7 @@ const DATA = {
 };
 
 const state = {
-  activeCategory: "garrafa",
+  activeCategory: "acai",
   cart: [],
   currentProduct: null,
   modal: {
