@@ -198,6 +198,8 @@ const elements = {
   cartBarText: document.getElementById("cartBarText"),
   openCheckoutBtn: document.getElementById("openCheckoutBtn"),
   checkoutForm: document.getElementById("checkoutForm"),
+  copyPixBtn: document.getElementById("copyPixBtn"),
+  copyPixBtnLabel: document.getElementById("copyPixBtnLabel"),
   toast: document.getElementById("toast")
 };
 
@@ -344,9 +346,10 @@ function getModalTotals() {
   return { paidExtrasTotal, freeExtrasTotal, total };
 }
 
-function renderCustomizer() {
+function renderCustomizer(options = {}) {
   const product = state.currentProduct;
   if (!product) return;
+  const { scrollTop = 0 } = options;
 
   const totals = getModalTotals();
 
@@ -458,11 +461,18 @@ function renderCustomizer() {
       <button class="btn btn--primary" type="button" id="addToCartBtn">Adicionar ao carrinho</button>
     </div>
   `;
+
+  const scrollArea = elements.customizerContent.querySelector(".customizer-scroll");
+  if (scrollArea) {
+    scrollArea.scrollTop = scrollTop;
+  }
 }
 
 function toggleSelection(group, value) {
   const product = state.currentProduct;
   if (!product) return;
+  const currentScrollTop =
+    elements.customizerContent.querySelector(".customizer-scroll")?.scrollTop || 0;
 
   const currentNotes = document.getElementById("itemNotes");
   if (currentNotes) {
@@ -516,7 +526,7 @@ function toggleSelection(group, value) {
     state.modal.flavor = state.modal.flavor === value ? "" : value;
   }
 
-  renderCustomizer();
+  renderCustomizer({ scrollTop: currentScrollTop });
 }
 
 function addCurrentItemToCart() {
@@ -629,6 +639,11 @@ function renderCheckoutSummary() {
 }
 
 function buildWhatsAppMessage(formData) {
+  const paymentMethod = String(formData.get("pagamento") || "Pix");
+  const paymentDetails =
+    paymentMethod.toLowerCase() === "pix"
+      ? `Pix copia e cola:\n${PIX_KEY}`
+      : "Troco: não se aplica";
   const itemsText = state.cart
     .map((item, index) => {
       const details = describeCartItem(item);
@@ -638,7 +653,7 @@ function buildWhatsAppMessage(formData) {
 
   const observacoes = formData.get("observacoes") ? `Observações do pedido: ${formData.get("observacoes")}` : "Observações do pedido: nenhuma";
 
-  const rawMessage = `Olá, Cantinho do Açaí! Gostaria de fazer um pedido:\n\nCliente: ${formData.get("nome")}\nTelefone: ${formData.get("telefone")}\nEndereço de entrega: ${formData.get("endereco")}, ${formData.get("numero")}\nComplemento: ${formData.get("complemento") || "sem complemento"}\nBairro: ${formData.get("bairro")}\nReferência: ${formData.get("referencia") || "sem referência"}\nForma de pagamento: ${formData.get("pagamento")}\n${trocoText}\n${observacoes}\n\nItens do pedido:\n${itemsText}\n\nTotal: ${formatCurrency(getCartTotal())}`;
+  const rawMessage = `Olá, Cantinho do Açaí! Gostaria de fazer um pedido:\n\nCliente: ${formData.get("nome")}\nTelefone: ${formData.get("telefone")}\nEndereço de entrega: ${formData.get("endereco")}, ${formData.get("numero")}\nComplemento: ${formData.get("complemento") || "sem complemento"}\nBairro: ${formData.get("bairro")}\nReferência: ${formData.get("referencia") || "sem referência"}\nForma de pagamento: ${formData.get("pagamento")}\n${paymentDetails}\n${observacoes}\n\nItens do pedido:\n${itemsText}\n\nTotal: ${formatCurrency(getCartTotal())}`;
 
   return encodeURIComponent(rawMessage);
 }
@@ -654,7 +669,52 @@ function handleCheckoutSubmit(event) {
   const formData = new FormData(elements.checkoutForm);
   const message = buildWhatsAppMessage(formData);
   const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
-  window.open(url, "_blank", "noopener,noreferrer");
+  const popup = window.open(url, "_blank", "noopener,noreferrer");
+  if (!popup) {
+    window.location.href = url;
+  }
+}
+
+function copyTextWithFallback(text) {
+  const helper = document.createElement("textarea");
+  helper.value = text;
+  helper.setAttribute("readonly", "");
+  helper.style.position = "fixed";
+  helper.style.opacity = "0";
+  helper.style.pointerEvents = "none";
+  document.body.appendChild(helper);
+  helper.select();
+  helper.setSelectionRange(0, helper.value.length);
+  document.execCommand("copy");
+  document.body.removeChild(helper);
+}
+
+async function handleCopyPix() {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(PIX_KEY);
+    } else {
+      copyTextWithFallback(PIX_KEY);
+    }
+
+    if (elements.copyPixBtnLabel) {
+      elements.copyPixBtnLabel.textContent = "Copiado!";
+      setTimeout(() => {
+        if (elements.copyPixBtnLabel) {
+          elements.copyPixBtnLabel.textContent = "Copiar";
+        }
+      }, 1800);
+    }
+
+    showToast("Chave Pix copiada.");
+  } catch (error) {
+    try {
+      copyTextWithFallback(PIX_KEY);
+      showToast("Chave Pix copiada.");
+    } catch {
+      showToast("Não foi possível copiar a chave Pix.");
+    }
+  }
 }
 
 let toastTimeout;
@@ -720,6 +780,7 @@ function bindEvents() {
 
   elements.openCheckoutBtn.addEventListener("click", openCheckout);
   elements.checkoutForm.addEventListener("submit", handleCheckoutSubmit);
+  elements.copyPixBtn?.addEventListener("click", handleCopyPix);
 
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;

@@ -191,7 +191,13 @@
                   <select name="pagamento" required>
                     <option value="Pix" selected>Pix</option>
                   </select>
-                  <small class="pix-note">Pague para este Pix: 58137537000188</small>
+                  <div class="pix-copy-card">
+                    <span class="pix-copy-card__label">Pix copia e cola</span>
+                    <button class="pix-copy-btn" type="button" id="copyPixBtn" aria-label="Copiar chave Pix">
+                      <span class="pix-copy-btn__key">58137537000188</span>
+                      <strong id="copyPixBtnLabel">Copiar</strong>
+                    </button>
+                  </div>
                 </label>
               </div>
 
