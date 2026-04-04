@@ -5,8 +5,8 @@ const BUSINESS_HOURS = { start: "08:30", end: "19:30" };
 
 const DATA = {
   categories: [
-    { id: "garrafa", label: "Açaí na Garrafa" },
     { id: "acai", label: "Açaí" },
+    { id: "garrafa", label: "Açaí na Garrafa" },
     { id: "pastel", label: "Pastel" }
   ],
   products: [
@@ -130,6 +130,17 @@ const DATA = {
       config: { freeIncluded: 3, paidLimit: 4 }
     },
     {
+      id: "combo-acai-500",
+      category: "acai",
+      title: "Combo 2 Açaís Tradicionais - 500ml",
+      description: "2 copos de 500ml com 3 adicionais grátis por copo.",
+      price: 35,
+      image: "copo.png",
+      buttonLabel: "Escolher complementos",
+      type: "acaiCombo",
+      config: { quantity: 2, freeIncluded: 3, paidLimit: 4 }
+    },
+    {
       id: "acai-700",
       category: "acai",
       title: "Açaí Tradicional - 700ml",
@@ -175,16 +186,10 @@ const DATA = {
 };
 
 const state = {
-  activeCategory: "garrafa",
+  activeCategory: "acai",
   cart: [],
   currentProduct: null,
-  modal: {
-    free: [],
-    paid: [],
-    discard: "",
-    notes: "",
-    flavor: ""
-  }
+  modal: createModalState()
 };
 
 const elements = {
@@ -198,6 +203,8 @@ const elements = {
   cartBarText: document.getElementById("cartBarText"),
   openCheckoutBtn: document.getElementById("openCheckoutBtn"),
   checkoutForm: document.getElementById("checkoutForm"),
+  copyPixBtn: document.getElementById("copyPixBtn"),
+  copyPixBtnLabel: document.getElementById("copyPixBtnLabel"),
   toast: document.getElementById("toast")
 };
 
@@ -212,6 +219,92 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function createAcaiSelectionState() {
+  return {
+    free: [],
+    paid: [],
+    discard: ""
+  };
+}
+
+function createModalState(product = null) {
+  return {
+    free: [],
+    paid: [],
+    discard: "",
+    notes: "",
+    flavor: "",
+    comboActive: 0,
+    comboItems:
+      product?.type === "acaiCombo"
+        ? Array.from({ length: product.config.quantity }, () => createAcaiSelectionState())
+        : []
+  };
+}
+
+function getComboItemLabel(index) {
+  return `Açaí ${index + 1}`;
+}
+
+function getActiveSelectionState() {
+  const product = state.currentProduct;
+  if (product?.type === "acaiCombo") {
+    return state.modal.comboItems[state.modal.comboActive] || state.modal.comboItems[0] || createAcaiSelectionState();
+  }
+
+  return state.modal;
+}
+
+function getAcaiSelectionTotals(selection, config) {
+  const currentSelection = selection || createAcaiSelectionState();
+  const freeExtrasTotal = Math.max(0, currentSelection.free.length - config.freeIncluded) * 2;
+  const paidExtrasTotal = currentSelection.paid.reduce((sum, name) => {
+    const match = DATA.acaiPaidOptions.find((option) => option.name === name);
+    return sum + (match?.price || 0);
+  }, 0);
+
+  return {
+    freeExtrasTotal,
+    paidExtrasTotal,
+    total: freeExtrasTotal + paidExtrasTotal
+  };
+}
+
+function renderAcaiOptionSections(selection, config) {
+  const currentSelection = selection || createAcaiSelectionState();
+  const freeExtraCount = Math.max(0, currentSelection.free.length - config.freeIncluded);
+
+  return `
+    <section class="modal-section">
+      <h3>Complementos grátis (${currentSelection.free.length}/${config.freeIncluded} inclusos)</h3>
+      <p>Extras além do limite incluso custam ${formatCurrency(2)} cada.</p>
+      <div class="choice-grid choice-grid--compact">
+        ${renderChoiceButtons(DATA.acaiFreeOptions, currentSelection.free, "free")}
+      </div>
+      <div class="counter-text">${
+        freeExtraCount > 0 ? `${freeExtraCount} extra(s) cobrados acima do limite incluso.` : "Você ainda está dentro do limite grátis."
+      }</div>
+    </section>
+
+    <section class="modal-section">
+      <h3>Complementos pagos</h3>
+      <p>Escolha até ${config.paidLimit} opções.</p>
+      <div class="choice-grid choice-grid--compact">
+        ${renderChoiceButtons(DATA.acaiPaidOptions, currentSelection.paid, "paid", true)}
+      </div>
+      <div class="counter-text">Selecionados: ${currentSelection.paid.length}/${config.paidLimit}</div>
+    </section>
+
+    <section class="modal-section">
+      <h3>Colher obrigatória</h3>
+      <p>Escolha 1 opção para o seu açaí.</p>
+      <div class="choice-grid choice-grid--compact">
+        ${renderChoiceButtons(["Sim", "Não"], currentSelection.discard ? [currentSelection.discard] : [], "discard")}
+      </div>
+    </section>
+  `;
 }
 
 
@@ -279,13 +372,7 @@ function openCustomizer(productId) {
   }
 
   state.currentProduct = product;
-  state.modal = {
-    free: [],
-    paid: [],
-    discard: "",
-    notes: "",
-    flavor: ""
-  };
+  state.modal = createModalState(product);
 
   renderCustomizer();
   elements.customizerDrawer.classList.add("is-open");
@@ -333,22 +420,36 @@ function getModalTotals() {
   }
 
   if (product.type === "acai") {
-    freeExtrasTotal = Math.max(0, state.modal.free.length - product.config.freeIncluded) * 2;
-    paidExtrasTotal = state.modal.paid.reduce((sum, name) => {
-      const match = DATA.acaiPaidOptions.find((option) => option.name === name);
-      return sum + (match?.price || 0);
-    }, 0);
+    const acaiTotals = getAcaiSelectionTotals(state.modal, product.config);
+    freeExtrasTotal = acaiTotals.freeExtrasTotal;
+    paidExtrasTotal = acaiTotals.paidExtrasTotal;
+  }
+
+  if (product.type === "acaiCombo") {
+    const comboTotals = state.modal.comboItems.map((selection) => getAcaiSelectionTotals(selection, product.config));
+    freeExtrasTotal = comboTotals.reduce((sum, item) => sum + item.freeExtrasTotal, 0);
+    paidExtrasTotal = comboTotals.reduce((sum, item) => sum + item.paidExtrasTotal, 0);
+    const total = product.price + freeExtrasTotal + paidExtrasTotal;
+    return { paidExtrasTotal, freeExtrasTotal, total, comboTotals };
   }
 
   const total = product.price + freeExtrasTotal + paidExtrasTotal;
   return { paidExtrasTotal, freeExtrasTotal, total };
 }
 
-function renderCustomizer() {
+function renderCustomizer(options = {}) {
   const product = state.currentProduct;
   if (!product) return;
+  const { scrollTop = 0 } = options;
 
   const totals = getModalTotals();
+  const summaryTitle = product.type === "acaiCombo" ? "Resumo do combo" : "Resumo do item";
+  let summaryLines = `
+    <div class="summary-line"><span>Preço base:</span> <strong>${formatCurrency(product.price)}</strong></div>
+    ${product.type === "acai" ? `<div class="summary-line"><span>Extras do limite grátis:</span> <strong>${formatCurrency(totals.freeExtrasTotal)}</strong></div>` : ""}
+    <div class="summary-line"><span>Adicionais pagos:</span> <strong>${formatCurrency(totals.paidExtrasTotal)}</strong></div>
+    <div class="summary-line"><span>Total do item:</span> <strong>${formatCurrency(totals.total)}</strong></div>
+  `;
 
   let sections = "";
 
@@ -383,35 +484,51 @@ function renderCustomizer() {
   }
 
   if (product.type === "acai") {
-    const freeExtraCount = Math.max(0, state.modal.free.length - product.config.freeIncluded);
+    sections = renderAcaiOptionSections(state.modal, product.config);
+  }
+
+  if (product.type === "acaiCombo") {
+    const activeSelection = getActiveSelectionState();
     sections = `
-      <section class="modal-section">
-        <h3>Complementos grátis (${state.modal.free.length}/${product.config.freeIncluded} inclusos)</h3>
-        <p>Extras além do limite incluso custam ${formatCurrency(2)} cada.</p>
-        <div class="choice-grid choice-grid--compact">
-          ${renderChoiceButtons(DATA.acaiFreeOptions, state.modal.free, "free")}
+      <section class="combo-tabs-panel">
+        <div class="combo-tabs">
+          ${state.modal.comboItems
+            .map((selection, index) => {
+              const selectionTotals = getAcaiSelectionTotals(selection, product.config);
+              return `
+                <button
+                  class="combo-tab ${state.modal.comboActive === index ? "is-active" : ""}"
+                  type="button"
+                  data-combo-tab="${index}"
+                >
+                  <strong>${getComboItemLabel(index)}</strong>
+                  <small>${selection.free.length} grátis | ${selection.paid.length} pago(s)</small>
+                  <span class="combo-tab__status ${selection.discard ? "is-ready" : ""}">
+                    ${selection.discard ? "Colher definida" : "Falta escolher colher"}
+                  </span>
+                  <small>Extras: ${formatCurrency(selectionTotals.total)}</small>
+                </button>
+              `;
+            })
+            .join("")}
         </div>
-        <div class="counter-text">${
-          freeExtraCount > 0 ? `${freeExtraCount} extra(s) cobrados acima do limite incluso.` : "Você ainda está dentro do limite grátis."
-        }</div>
+        <div class="counter-text">Cada aba personaliza um copo de 500ml separadamente.</div>
       </section>
 
-      <section class="modal-section">
-        <h3>Complementos pagos</h3>
-        <p>Escolha até ${product.config.paidLimit} opções.</p>
-        <div class="choice-grid choice-grid--compact">
-          ${renderChoiceButtons(DATA.acaiPaidOptions, state.modal.paid, "paid", true)}
-        </div>
-        <div class="counter-text">Selecionados: ${state.modal.paid.length}/${product.config.paidLimit}</div>
-      </section>
+      ${renderAcaiOptionSections(activeSelection, product.config)}
+    `;
 
-      <section class="modal-section">
-        <h3>Colher obrigatória</h3>
-        <p>Escolha 1 opção para o seu açaí.</p>
-        <div class="choice-grid choice-grid--compact">
-          ${renderChoiceButtons(["Sim", "Não"], state.modal.discard ? [state.modal.discard] : [], "discard")}
-        </div>
-      </section>
+    summaryLines = `
+      <div class="summary-line"><span>Preço base do combo:</span> <strong>${formatCurrency(product.price)}</strong></div>
+      ${totals.comboTotals
+        .map(
+          (selectionTotals, index) => `
+            <div class="summary-line"><span>${getComboItemLabel(index)} extras grátis:</span> <strong>${formatCurrency(selectionTotals.freeExtrasTotal)}</strong></div>
+            <div class="summary-line"><span>${getComboItemLabel(index)} adicionais pagos:</span> <strong>${formatCurrency(selectionTotals.paidExtrasTotal)}</strong></div>
+          `
+        )
+        .join("")}
+      <div class="summary-line"><span>Total do combo:</span> <strong>${formatCurrency(totals.total)}</strong></div>
     `;
   }
 
@@ -445,11 +562,8 @@ function renderCustomizer() {
       </section>
 
       <section class="summary-card">
-        <h4>Resumo do item</h4>
-        <div class="summary-line"><span>Preço base:</span> <strong>${formatCurrency(product.price)}</strong></div>
-        ${product.type === "acai" ? `<div class="summary-line"><span>Extras do limite grátis:</span> <strong>${formatCurrency(totals.freeExtrasTotal)}</strong></div>` : ""}
-        <div class="summary-line"><span>Adicionais pagos:</span> <strong>${formatCurrency(totals.paidExtrasTotal)}</strong></div>
-        <div class="summary-line"><span>Total do item:</span> <strong>${formatCurrency(totals.total)}</strong></div>
+        <h4>${summaryTitle}</h4>
+        ${summaryLines}
       </section>
     </div>
 
@@ -458,11 +572,19 @@ function renderCustomizer() {
       <button class="btn btn--primary" type="button" id="addToCartBtn">Adicionar ao carrinho</button>
     </div>
   `;
+
+  const scrollArea = elements.customizerContent.querySelector(".customizer-scroll");
+  if (scrollArea) {
+    scrollArea.scrollTop = scrollTop;
+  }
 }
 
 function toggleSelection(group, value) {
   const product = state.currentProduct;
   if (!product) return;
+  const currentScrollTop =
+    elements.customizerContent.querySelector(".customizer-scroll")?.scrollTop || 0;
+  const selectionState = getActiveSelectionState();
 
   const currentNotes = document.getElementById("itemNotes");
   if (currentNotes) {
@@ -471,37 +593,37 @@ function toggleSelection(group, value) {
 
   if (group === "free") {
     if (product.type === "garrafa") {
-      const exists = state.modal.free.includes(value);
+      const exists = selectionState.free.includes(value);
       if (exists) {
-        state.modal.free = state.modal.free.filter((item) => item !== value);
-      } else if (state.modal.free.length < product.config.freeLimit) {
-        state.modal.free = [...state.modal.free, value];
+        selectionState.free = selectionState.free.filter((item) => item !== value);
+      } else if (selectionState.free.length < product.config.freeLimit) {
+        selectionState.free = [...selectionState.free, value];
       } else {
         showToast(`Você pode escolher até ${product.config.freeLimit} complementos grátis.`);
       }
     } else {
-      state.modal.free = state.modal.free.includes(value)
-        ? state.modal.free.filter((item) => item !== value)
-        : [...state.modal.free, value];
+      selectionState.free = selectionState.free.includes(value)
+        ? selectionState.free.filter((item) => item !== value)
+        : [...selectionState.free, value];
     }
   }
 
   if (group === "paid") {
     if (product.type === "garrafa") {
-      const exists = state.modal.paid.includes(value);
+      const exists = selectionState.paid.includes(value);
       if (exists) {
-        state.modal.paid = state.modal.paid.filter((item) => item !== value);
-      } else if (state.modal.paid.length < product.config.paidLimit) {
-        state.modal.paid = [...state.modal.paid, value];
+        selectionState.paid = selectionState.paid.filter((item) => item !== value);
+      } else if (selectionState.paid.length < product.config.paidLimit) {
+        selectionState.paid = [...selectionState.paid, value];
       } else {
         showToast(`Você pode escolher até ${product.config.paidLimit} complementos pagos.`);
       }
     } else {
-      const exists = state.modal.paid.includes(value);
+      const exists = selectionState.paid.includes(value);
       if (exists) {
-        state.modal.paid = state.modal.paid.filter((item) => item !== value);
-      } else if (state.modal.paid.length < product.config.paidLimit) {
-        state.modal.paid = [...state.modal.paid, value];
+        selectionState.paid = selectionState.paid.filter((item) => item !== value);
+      } else if (selectionState.paid.length < product.config.paidLimit) {
+        selectionState.paid = [...selectionState.paid, value];
       } else {
         showToast(`Você pode escolher até ${product.config.paidLimit} complementos pagos.`);
       }
@@ -509,14 +631,31 @@ function toggleSelection(group, value) {
   }
 
   if (group === "discard") {
-    state.modal.discard = state.modal.discard === value ? "" : value;
+    selectionState.discard = selectionState.discard === value ? "" : value;
   }
 
   if (group === "flavor") {
     state.modal.flavor = state.modal.flavor === value ? "" : value;
   }
 
-  renderCustomizer();
+  renderCustomizer({ scrollTop: currentScrollTop });
+}
+
+function switchComboTab(index) {
+  const product = state.currentProduct;
+  if (product?.type !== "acaiCombo") return;
+  if (Number.isNaN(index) || index < 0 || index >= state.modal.comboItems.length) return;
+
+  const currentScrollTop =
+    elements.customizerContent.querySelector(".customizer-scroll")?.scrollTop || 0;
+  const currentNotes = document.getElementById("itemNotes");
+
+  if (currentNotes) {
+    state.modal.notes = currentNotes.value;
+  }
+
+  state.modal.comboActive = index;
+  renderCustomizer({ scrollTop: currentScrollTop });
 }
 
 function addCurrentItemToCart() {
@@ -524,6 +663,16 @@ function addCurrentItemToCart() {
   if (!product) return;
 
   state.modal.notes = document.getElementById("itemNotes")?.value.trim() || "";
+
+  if (product.type === "acaiCombo") {
+    const missingDiscardIndex = state.modal.comboItems.findIndex((selection) => !selection.discard);
+    if (missingDiscardIndex !== -1) {
+      state.modal.comboActive = missingDiscardIndex;
+      renderCustomizer();
+      showToast(`Escolha se deseja enviar colher no ${getComboItemLabel(missingDiscardIndex)} antes de adicionar ao carrinho.`);
+      return;
+    }
+  }
 
   if ((product.type === "garrafa" || product.type === "acai") && !state.modal.discard) {
     showToast("Escolha se deseja enviar colher antes de adicionar ao carrinho.");
@@ -536,6 +685,20 @@ function addCurrentItemToCart() {
   }
 
   const totals = getModalTotals();
+  const comboSelections =
+    product.type === "acaiCombo"
+      ? state.modal.comboItems.map((selection, index) => {
+          const selectionTotals = getAcaiSelectionTotals(selection, product.config);
+          return {
+            label: getComboItemLabel(index),
+            freeSelections: [...selection.free],
+            paidSelections: [...selection.paid],
+            freeExtrasTotal: selectionTotals.freeExtrasTotal,
+            paidExtrasTotal: selectionTotals.paidExtrasTotal,
+            discard: selection.discard
+          };
+        })
+      : [];
 
   const cartItem = {
     uid: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
@@ -543,11 +706,12 @@ function addCurrentItemToCart() {
     title: product.title,
     basePrice: product.price,
     total: totals.total,
-    freeSelections: [...state.modal.free],
-    paidSelections: [...state.modal.paid],
+    freeSelections: product.type === "acaiCombo" ? [] : [...state.modal.free],
+    paidSelections: product.type === "acaiCombo" ? [] : [...state.modal.paid],
     freeExtrasTotal: totals.freeExtrasTotal,
     paidExtrasTotal: totals.paidExtrasTotal,
-    discard: state.modal.discard,
+    discard: product.type === "acaiCombo" ? "" : state.modal.discard,
+    comboSelections,
     notes: state.modal.notes,
     flavor: state.modal.flavor
   };
@@ -596,6 +760,15 @@ function closeCheckout() {
 
 function describeCartItem(item) {
   const details = [];
+  if (item.comboSelections?.length) {
+    item.comboSelections.forEach((selection) => {
+      const comboDetails = [];
+      if (selection.freeSelections.length) comboDetails.push(`Grátis: ${selection.freeSelections.join(", ")}`);
+      if (selection.paidSelections.length) comboDetails.push(`Pagos: ${selection.paidSelections.join(", ")}`);
+      if (selection.discard) comboDetails.push(`Colher: ${selection.discard}`);
+      details.push(`${selection.label}: ${comboDetails.join(" | ")}`);
+    });
+  }
   if (item.flavor) details.push(`Sabor: ${item.flavor}`);
   if (item.freeSelections.length) details.push(`Grátis: ${item.freeSelections.join(", ")}`);
   if (item.paidSelections.length) details.push(`Pagos: ${item.paidSelections.join(", ")}`);
@@ -629,6 +802,11 @@ function renderCheckoutSummary() {
 }
 
 function buildWhatsAppMessage(formData) {
+  const paymentMethod = String(formData.get("pagamento") || "Pix");
+  const paymentDetails =
+    paymentMethod.toLowerCase() === "pix"
+      ? `Pix copia e cola:\n${PIX_KEY}`
+      : "Troco: não se aplica";
   const itemsText = state.cart
     .map((item, index) => {
       const details = describeCartItem(item);
@@ -638,7 +816,7 @@ function buildWhatsAppMessage(formData) {
 
   const observacoes = formData.get("observacoes") ? `Observações do pedido: ${formData.get("observacoes")}` : "Observações do pedido: nenhuma";
 
-  const rawMessage = `Olá, Cantinho do Açaí! Gostaria de fazer um pedido:\n\nCliente: ${formData.get("nome")}\nTelefone: ${formData.get("telefone")}\nEndereço de entrega: ${formData.get("endereco")}, ${formData.get("numero")}\nComplemento: ${formData.get("complemento") || "sem complemento"}\nBairro: ${formData.get("bairro")}\nReferência: ${formData.get("referencia") || "sem referência"}\nForma de pagamento: ${formData.get("pagamento")}\n${trocoText}\n${observacoes}\n\nItens do pedido:\n${itemsText}\n\nTotal: ${formatCurrency(getCartTotal())}`;
+  const rawMessage = `Olá, Cantinho do Açaí! Gostaria de fazer um pedido:\n\nCliente: ${formData.get("nome")}\nTelefone: ${formData.get("telefone")}\nEndereço de entrega: ${formData.get("endereco")}, ${formData.get("numero")}\nComplemento: ${formData.get("complemento") || "sem complemento"}\nBairro: ${formData.get("bairro")}\nReferência: ${formData.get("referencia") || "sem referência"}\nForma de pagamento: ${formData.get("pagamento")}\n${paymentDetails}\n${observacoes}\n\nItens do pedido:\n${itemsText}\n\nTotal: ${formatCurrency(getCartTotal())}`;
 
   return encodeURIComponent(rawMessage);
 }
@@ -654,7 +832,52 @@ function handleCheckoutSubmit(event) {
   const formData = new FormData(elements.checkoutForm);
   const message = buildWhatsAppMessage(formData);
   const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
-  window.open(url, "_blank", "noopener,noreferrer");
+  const popup = window.open(url, "_blank", "noopener,noreferrer");
+  if (!popup) {
+    window.location.href = url;
+  }
+}
+
+function copyTextWithFallback(text) {
+  const helper = document.createElement("textarea");
+  helper.value = text;
+  helper.setAttribute("readonly", "");
+  helper.style.position = "fixed";
+  helper.style.opacity = "0";
+  helper.style.pointerEvents = "none";
+  document.body.appendChild(helper);
+  helper.select();
+  helper.setSelectionRange(0, helper.value.length);
+  document.execCommand("copy");
+  document.body.removeChild(helper);
+}
+
+async function handleCopyPix() {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(PIX_KEY);
+    } else {
+      copyTextWithFallback(PIX_KEY);
+    }
+
+    if (elements.copyPixBtnLabel) {
+      elements.copyPixBtnLabel.textContent = "Copiado!";
+      setTimeout(() => {
+        if (elements.copyPixBtnLabel) {
+          elements.copyPixBtnLabel.textContent = "Copiar";
+        }
+      }, 1800);
+    }
+
+    showToast("Chave Pix copiada.");
+  } catch (error) {
+    try {
+      copyTextWithFallback(PIX_KEY);
+      showToast("Chave Pix copiada.");
+    } catch {
+      showToast("Não foi possível copiar a chave Pix.");
+    }
+  }
 }
 
 let toastTimeout;
@@ -698,6 +921,12 @@ function bindEvents() {
       return;
     }
 
+    const comboTab = target.closest("[data-combo-tab]");
+    if (comboTab) {
+      switchComboTab(Number(comboTab.getAttribute("data-combo-tab")));
+      return;
+    }
+
     const choiceButton = target.closest("[data-choice-group]");
     if (choiceButton) {
       toggleSelection(
@@ -720,6 +949,7 @@ function bindEvents() {
 
   elements.openCheckoutBtn.addEventListener("click", openCheckout);
   elements.checkoutForm.addEventListener("submit", handleCheckoutSubmit);
+  elements.copyPixBtn?.addEventListener("click", handleCopyPix);
 
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;

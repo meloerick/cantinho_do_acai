@@ -526,6 +526,64 @@ button {
   margin: 0 0 14px;
 }
 
+.combo-tabs-panel {
+  padding-top: 28px;
+}
+
+.combo-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.combo-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-height: 112px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  text-align: left;
+  transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+
+.combo-tab:hover {
+  transform: translateY(-2px);
+}
+
+.combo-tab.is-active {
+  background: linear-gradient(135deg, rgba(255, 76, 178, 0.45), rgba(211, 108, 255, 0.5));
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.combo-tab strong {
+  font-size: 1.05rem;
+}
+
+.combo-tab small {
+  color: rgba(255, 255, 255, 0.76);
+}
+
+.combo-tab__status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.combo-tab__status.is-ready {
+  background: rgba(71, 214, 107, 0.18);
+  color: #d8ffe3;
+}
+
 .choice-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -866,6 +924,10 @@ button {
 
   .choice-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .combo-tabs {
+    grid-template-columns: 1fr;
   }
 
   .choice-chip {

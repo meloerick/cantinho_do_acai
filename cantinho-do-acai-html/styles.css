@@ -85,23 +85,22 @@ button {
 }
 
 .hero__top {
-  display: grid;
-  grid-template-columns: minmax(180px, 220px) 1fr;
-  align-items: center;
-  gap: 18px;
-  margin-bottom: 26px;
+  position: relative;
+  overflow: hidden;
+  height: clamp(220px, 28vw, 340px);
+  margin-bottom: 24px;
+  border-radius: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.34);
+  background: linear-gradient(135deg, rgba(176, 92, 255, 0.92) 0%, rgba(114, 15, 171, 0.98) 100%);
 }
 
 .hero__logo {
   width: 100%;
-  max-width: 220px;
-  height: 140px;
+  height: 100%;
   object-fit: contain;
-  border-radius: 28px;
-  padding: 14px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+  object-position: center center;
+  background: #6f149c;
 }
 
 .hero__badge,
@@ -117,11 +116,16 @@ button {
 }
 
 .hero__badge {
+  position: absolute;
+  left: 22px;
+  bottom: 22px;
+  z-index: 1;
   min-height: 50px;
   padding: 0 20px;
   border-radius: 999px;
   font-size: 0.95rem;
   color: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
 }
 
 .hero__grid {
@@ -522,6 +526,64 @@ button {
   margin: 0 0 14px;
 }
 
+.combo-tabs-panel {
+  padding-top: 28px;
+}
+
+.combo-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.combo-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-height: 112px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  text-align: left;
+  transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+
+.combo-tab:hover {
+  transform: translateY(-2px);
+}
+
+.combo-tab.is-active {
+  background: linear-gradient(135deg, rgba(255, 76, 178, 0.45), rgba(211, 108, 255, 0.5));
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.combo-tab strong {
+  font-size: 1.05rem;
+}
+
+.combo-tab small {
+  color: rgba(255, 255, 255, 0.76);
+}
+
+.combo-tab__status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.combo-tab__status.is-ready {
+  background: rgba(71, 214, 107, 0.18);
+  color: #d8ffe3;
+}
+
 .choice-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -784,17 +846,19 @@ button {
   }
 
   .hero__top {
-    grid-template-columns: 1fr;
-    align-items: stretch;
-    gap: 12px;
-    margin-bottom: 20px;
+    height: 200px;
+    margin-bottom: 18px;
+    border-radius: 26px;
   }
 
   .hero__logo {
-    max-width: none;
-    width: 100%;
-    height: 150px;
-    padding: 18px;
+    height: 100%;
+  }
+
+  .hero__badge {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
   }
 
   .hero__copy h1 {
@@ -862,6 +926,10 @@ button {
     grid-template-columns: 1fr 1fr;
   }
 
+  .combo-tabs {
+    grid-template-columns: 1fr;
+  }
+
   .choice-chip {
     min-height: 42px;
     padding: 7px 10px;
@@ -917,7 +985,21 @@ button {
   }
 
   .hero__logo {
-    height: 128px;
+    height: 100%;
+  }
+
+  .hero__top {
+    height: 168px;
+    border-radius: 24px;
+  }
+
+  .hero__badge {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    min-height: 46px;
+    padding: 0 16px;
+    font-size: 0.88rem;
   }
 
   .drawer__footer .btn,
@@ -935,9 +1017,65 @@ button {
 }
 
 
-.pix-note {
-  display:block;
-  margin-top: 6px;
-  font-size: 0.9rem;
-  color: rgba(255,255,255,0.78);
+.pix-copy-card {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 14px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #0a63ff 0%, #1ab0ff 100%);
+  box-shadow: 0 18px 34px rgba(6, 56, 158, 0.28);
+}
+
+.pix-copy-card__label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.pix-copy-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 58px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  color: #fff;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.pix-copy-btn:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.18);
+}
+
+.pix-copy-btn__key {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  word-break: break-all;
+}
+
+.pix-copy-btn strong {
+  flex-shrink: 0;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 520px) {
+  .pix-copy-btn {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .pix-copy-btn strong {
+    font-size: 0.9rem;
+  }
 }
